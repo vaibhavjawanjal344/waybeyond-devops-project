@@ -4,19 +4,26 @@ pipeline {
         stage('Deploy') {
             steps {
                 sh '''
-                    echo "=== SIMPLE DEPLOY ==="
-                    cd /home/ubuntu/waybeyond-devops-project
-                    pwd
-                    ls -la docker-compose.yml
+                    # Check system
+                    echo "User: \$(whoami)"
+                    echo "Path: \$PATH"
                     
-                    # USE docker-compose WITH HYPHEN
-                    /usr/local/bin/docker-compose version || docker-compose version
+                    # Try docker-compose (WITH HYPHEN)
+                    echo "Trying docker-compose..."
+                    which docker-compose
+                    docker-compose --version || echo "Trying /usr/local/bin/docker-compose"
+                    /usr/local/bin/docker-compose --version || echo "docker-compose not found"
                     
                     # Deploy
-                    /usr/local/bin/docker-compose down || true
-                    /usr/local/bin/docker-compose up -d
+                    echo "Deploying..."
+                    cd /home/ubuntu/waybeyond-devops-project
+                    sudo docker-compose down 2>/dev/null || true
+                    sudo docker-compose up -d 2>/dev/null || docker-compose up -d
                     
-                    echo "Deployment done"
+                    # Verify
+                    sleep 3
+                    docker ps 2>/dev/null || sudo docker ps
+                    echo "✅ Done"
                 '''
             }
         }
