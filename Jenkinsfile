@@ -1,42 +1,72 @@
 pipeline {
     agent any
     
+    environment {
+        DOCKER_COMPOSE = 'docker-compose'
+        PROJECT_NAME = 'devops-assignment'
+    }
+    
     stages {
         stage('Checkout Code') {
             steps {
-                echo '📥 Downloading code from GitHub...'
-                sh 'pwd'
-                sh 'ls -la'
+                git branch: 'main', 
+                url: 'https://github.com/YOUR_GITHUB_USERNAME/YOUR_REPO_NAME.git'
+                clean true
             }
         }
         
-        stage('Build') {
+        stage('Build Docker Images') {
             steps {
-                echo '🔨 Building containers...'
-                sh 'docker compose build'
+                sh '''
+                    echo "Building Docker images..."
+                    docker-compose build --no-cache
+                '''
             }
         }
         
-        stage('Deploy') {
+        stage('Deploy Application') {
             steps {
-                echo '🚀 Starting application...'
-                sh 'docker compose up -d'
-                sh 'sleep 10'
-                sh 'docker ps'
+                sh '''
+                    echo "Stopping old containers..."
+                    docker-compose down || true
+                    
+                    echo "Starting new containers..."
+                    docker-compose up -d
+                    
+                    echo "Cleaning up unused Docker images..."
+                    docker image prune -f
+                '''
             }
         }
         
-        stage('Test') {
+        stage('Health Check') {
             steps {
-                echo '✅ Testing if app is running...'
-                sh 'curl -f http://localhost:5000 || echo "Backend is up!"'
+                sh '''
+                    echo "Waiting for services to start..."
+                    sleep 10
+                    
+                    echo "Checking backend health..."
+                    curl -f http://localhost:5000/api/health || exit 1
+                    
+                    echo "Checking frontend..."
+                    curl -f http://localhost:3002 || exit 1
+                    
+                    echo "All services are up!"
+                '''
             }
         }
     }
     
     post {
+        success {
+            echo 'Pipeline succeeded! Deployment complete.'
+        }
+        failure {
+            echo 'Pipeline failed! Check logs above.'
+        }
         always {
-            echo '📝 Pipeline finished!'
+            echo 'Cleaning workspace...'
+            cleanWs()
         }
     }
 }
