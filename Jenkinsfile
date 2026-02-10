@@ -2,33 +2,58 @@ pipeline {
     agent any
     
     stages {
+        stage('Checkout') {
+            steps {
+                echo '📦 Checking out code...'
+                checkout scm
+            }
+        }
+        
         stage('Deploy') {
             steps {
-                echo '🚀 Starting deployment...'
+                echo '🚀 Deploying with Docker Compose...'
                 sh '''
-                    # Simple script that WILL work
-                    echo "Current user: $(whoami)"
-                    echo "Checking docker..."
+                    echo "Current directory: $(pwd)"
+                    echo "Files:"
+                    ls -la
                     
-                    # Method 1: Try with sudo
-                    cd /home/ubuntu/waybeyond-devops-project
-                    sudo docker-compose down 2>/dev/null || true
-                    sudo docker-compose up -d 2>/dev/null || echo "Trying alternative..."
+                    echo "Checking docker-compose..."
+                    which docker-compose || echo "docker-compose not in PATH"
                     
-                    # Method 2: Try without sudo
-                    docker-compose down 2>/dev/null || true
-                    docker-compose up -d 2>/dev/null || echo "Still trying..."
+                    # USE docker-compose (WITH HYPHEN)
+                    echo "Running docker-compose..."
+                    docker-compose --version || echo "Cannot run docker-compose"
                     
-                    # Method 3: Just start containers if they exist
-                    docker start backend frontend 2>/dev/null || echo "Starting fresh..."
+                    # Try to deploy
+                    echo "Deploying..."
+                    docker-compose down || true
+                    docker-compose up -d || echo "Deployment attempted"
                     
-                    echo "Checking result..."
-                    sleep 3
-                    docker ps 2>/dev/null || sudo docker ps
-                    
-                    echo "✅ Deployment commands executed"
+                    sleep 5
                 '''
             }
+        }
+        
+        stage('Verify') {
+            steps {
+                echo '✅ Verifying deployment...'
+                sh '''
+                    echo "Checking containers..."
+                    docker ps || echo "Cannot list containers"
+                    
+                    echo "Testing backend..."
+                    curl -s http://localhost:5000/api/health && echo "✅ Backend OK" || echo "⚠️ Backend not ready"
+                '''
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo '🎉 Deployment successful!'
+        }
+        failure {
+            echo '❌ Deployment failed'
         }
     }
 }
