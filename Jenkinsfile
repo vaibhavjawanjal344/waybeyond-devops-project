@@ -1,59 +1,24 @@
 pipeline {
     agent any
-    
     stages {
-        stage('Checkout') {
-            steps {
-                echo '📦 Checking out code...'
-                checkout scm
-            }
-        }
-        
         stage('Deploy') {
             steps {
-                echo '🚀 Deploying with Docker Compose...'
                 sh '''
-                    echo "Current directory: $(pwd)"
-                    echo "Files:"
-                    ls -la
+                    echo "=== SIMPLE DEPLOY ==="
+                    cd /home/ubuntu/waybeyond-devops-project
+                    pwd
+                    ls -la docker-compose.yml
                     
-                    echo "Checking docker-compose..."
-                    which docker-compose || echo "docker-compose not in PATH"
+                    # USE docker-compose WITH HYPHEN
+                    /usr/local/bin/docker-compose version || docker-compose version
                     
-                    # USE docker-compose (WITH HYPHEN)
-                    echo "Running docker-compose..."
-                    docker-compose --version || echo "Cannot run docker-compose"
+                    # Deploy
+                    /usr/local/bin/docker-compose down || true
+                    /usr/local/bin/docker-compose up -d
                     
-                    # Try to deploy
-                    echo "Deploying..."
-                    docker-compose down || true
-                    docker-compose up -d || echo "Deployment attempted"
-                    
-                    sleep 5
+                    echo "Deployment done"
                 '''
             }
-        }
-        
-        stage('Verify') {
-            steps {
-                echo '✅ Verifying deployment...'
-                sh '''
-                    echo "Checking containers..."
-                    docker ps || echo "Cannot list containers"
-                    
-                    echo "Testing backend..."
-                    curl -s http://localhost:5000/api/health && echo "✅ Backend OK" || echo "⚠️ Backend not ready"
-                '''
-            }
-        }
-    }
-    
-    post {
-        success {
-            echo '🎉 Deployment successful!'
-        }
-        failure {
-            echo '❌ Deployment failed'
         }
     }
 }
